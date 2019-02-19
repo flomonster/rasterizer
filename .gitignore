@@ -1,0 +1,13 @@
+# EDITOR
+*.swp
+*~
+\#*\#
+
+# BUILD
+*.a
+*.so
+*.o
+build/
+
+# OUTPUT
+*.ppm
