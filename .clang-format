@@ -1,0 +1,11 @@
+﻿---
+BasedOnStyle: Google
+AllowShortBlocksOnASingleLine: 'false'
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: 'false'
+AllowShortLoopsOnASingleLine: 'false'
+IndentWidth: '4'
+Language: Cpp
+TabWidth: '8'
+
+...
