@@ -1,7 +1,13 @@
+#include <iostream>
+#include <fstream>
+
 #include <assimp/postprocess.h>  // Post processing flags
 #include <assimp/scene.h>        // Output data structure
 #include <assimp/Importer.hpp>   // C++ importer interface
-#include <iostream>
+
+#include "render.hh"
+#include "ppm.hh"
+
 
 bool DoTheImportThing(const std::string& pFile) {
     // Create an instance of the Importer class
@@ -13,18 +19,32 @@ bool DoTheImportThing(const std::string& pFile) {
         pFile, aiProcess_CalcTangentSpace | aiProcess_Triangulate |
                    aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
 
-    // If the import failed, report it
     if (!scene) {
         std::cerr << importer.GetErrorString() << std::endl;
         return false;
     }
-    // Now we can access the file's contents.
-    // DoTheSceneProcessing(scene);
-    // We're done. Everything will be cleaned up by the importer destructor
+
+    // do stuff
     return true;
 }
 
-int main(int argc, char* argv) {
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " OUTPUT_PPM" << std::endl;
+        return 1;
+    }
+
+    const char *output_path = argv[1];
     DoTheImportThing("tests/cube.obj");
-    std::cout << "Hello world" << std::endl;
+
+    auto open_mode = (std::fstream::in | std::fstream::out | std::fstream::binary | std::fstream::trunc);
+    auto out = std::fstream(output_path, open_mode);
+    if (!out.is_open()) {
+        std::cerr << "failed to open: " << output_path << std::endl;
+        return 1;
+    }
+
+    Image img = scene_render();
+    image_render_ppm(img, out);
 }
