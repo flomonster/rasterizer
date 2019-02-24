@@ -6,7 +6,6 @@
 #include <assimp/Importer.hpp>   // C++ importer interface
 
 #include "ppm.hh"
-#include "render.hh"
 
 const aiScene& import_scene(const std::string& pFile) {
     // Create an instance of the Importer class
@@ -44,6 +43,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    Image img = scene_render();
-    image_render_ppm(img, out);
+    Image res{42, 42};
+
+
+    image_render_ppm(res, out);
 }
