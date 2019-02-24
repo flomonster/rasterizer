@@ -7,7 +7,7 @@ deps = [assimp_dep]
 
 inc = include_directories('src/includes')
 executable('rasterizer',
-           'src/main.cpp',
+           'src/main.cc',
            'src/render.cc',
            'src/ppm.cc',
            'src/color.cc',
