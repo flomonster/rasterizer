@@ -1,8 +1,10 @@
 #include <iostream>
 #include <iomanip>
 #include "ppm.hh"
+#include <cassert>
 
 static inline void put_component(flt comp, std::ostream &out) {
+    assert(comp >= 0 && comp <= 1);
     int curval = comp * 255;
     out << std::setfill(' ') << std::setw(4) << curval;
 }

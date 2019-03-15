@@ -31,7 +31,7 @@ void import_scene(const std::string& pFile) {
 using Face = std::vector<aiVector3D>;
 
 std::ostream &operator<<(std::ostream &out, const aiVector3D& vec) {
-  return out << "<Vec3 " << vec.x << ", " << vec.y << ", " << vec.z << ">";
+    return out << "<Vec3 " << vec.x << ", " << vec.y << ", " << vec.z << ">";
 }
 
 std::ostream &operator<<(std::ostream &out, const aiMatrix4x4& mat) {
@@ -65,7 +65,8 @@ static void flatten_node(std::vector<Face>& res, aiMatrix4x4 transform,
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         auto mesh = scene->mMeshes[node->mMeshes[i]];
         for (unsigned int j = 0; j < mesh->mNumFaces; j++) {
-            auto face_vec = Face(3);
+            auto face_vec = Face();
+            face_vec.reserve(3);
             for (unsigned int k = 0; k < mesh->mFaces[j].mNumIndices; k++) {
                 auto vertice = mesh->mVertices[mesh->mFaces[j].mIndices[k]];
                 std::cout << vertice.x << ' ' << vertice.y << ' ' << vertice.z
@@ -75,6 +76,7 @@ static void flatten_node(std::vector<Face>& res, aiMatrix4x4 transform,
                 std::cout << vertice.x << ' ' << vertice.y << ' ' << vertice.z
                           << '\n';
             }
+            assert(face_vec.size() == 3);
             res.push_back(std::move(face_vec));
         }
     }
@@ -84,16 +86,53 @@ static void flatten_node(std::vector<Face>& res, aiMatrix4x4 transform,
     }
 }
 
-aiCamera get_camera(const aiScene *scene) {
-  assert(scene->HasCameras());
-  auto camera = *scene->mCameras[0];
-  auto camera_name = std::string{camera.mName.data, camera.mName.length};
-  const auto& transform = object_transforms[camera_name];
-  std::cout << "> transform is: " << transform << std::endl;
-  camera.mPosition *= transform;
-  camera.mLookAt *= transform;
-  camera.mUp *= transform;
-  return camera;
+aiCamera get_camera(const aiScene* scene) {
+    assert(scene->HasCameras());
+    auto camera = *scene->mCameras[0];
+    auto camera_name = std::string{camera.mName.data, camera.mName.length};
+    const auto& transform = object_transforms[camera_name];
+    std::cout << "> transform is: " << transform << std::endl;
+    camera.mPosition *= transform;
+    camera.mLookAt *= transform;
+    camera.mUp *= transform;
+    return camera;
+}
+
+// aiMatrix4x4 get_camera_transform(up, direction) {
+//     auto xaxis = up ^ direction;
+//     xaxis.Normalize();
+
+//     auto yaxis = direction ^ xaxis;
+//     yaxis.Normalize();
+
+//     1.x = xaxis.x;
+//     1.y = yaxis.x;
+//     1.z = direction.x;
+
+//     2.x = xaxis.y;
+//     2.y = yaxis.y;
+//     2.z = direction.y;
+
+//     3.x = xaxis.z;
+//     3.y = yaxis.z;
+//     3.z = direction.z;
+// }
+
+aiMatrix4x4 GetProjectionMatrix(size_t width, size_t height, const aiCamera &camera)
+{
+    const float fFarPlane = camera.mClipPlaneFar;
+    const float fNearPlane = camera.mClipPlaneNear;
+    const auto fFOV = camera.mHorizontalFOV;
+    const float s = 1.0f / tanf(fFOV * 0.5f);
+    const float Q = fFarPlane / (fFarPlane - fNearPlane);
+
+    const float fAspect = (float)width / (float)height;
+
+    return aiMatrix4x4(
+        s / fAspect, 0.0f, 0.0f, 0.0f,
+        0.0f, s, 0.0f, 0.0f,
+        0.0f, 0.0f, -Q, -1.0f,
+        0.0f, 0.0f, -Q * fNearPlane, 0.0f);
 }
 
 int main(int argc, char* argv[]) {
@@ -116,9 +155,15 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    Image resulting_image{42, 42};
-    std::vector<Face> res;
-    flatten_node(res, aiMatrix4x4{}, scene->mRootNode);
+    size_t width = 42;
+    size_t height = 42;
+    Image resulting_image{width, height};
+    std::vector<Face> vertices;
+    flatten_node(vertices, aiMatrix4x4{}, scene->mRootNode);
+    for (size_t y = 0; y < 42; y++)
+        for (size_t x = 0; x < 42; x++)
+            resulting_image[y][x] = Color{(x + y)/100.0, (43 + x - y)/100.0, 0.0};
+
     image_render_ppm(resulting_image, out);
 
     std::cout << ">> Objects:" << std::endl;
@@ -129,4 +174,48 @@ int main(int argc, char* argv[]) {
     std::cout << camera.mPosition << std::endl;
     std::cout << camera.mLookAt << std::endl;
     std::cout << camera.mUp << std::endl;
+
+    aiMatrix4x4 cam_rot;
+    camera.GetCameraMatrix(cam_rot);
+    cam_rot.a4 = 0.f;
+    cam_rot.b4 = 0.f;
+    cam_rot.c4 = 0.f;
+
+    aiMatrix4x4 cam_trans;
+    cam_trans.a4 = -camera.mPosition.x;
+    cam_trans.b4 = -camera.mPosition.y;
+    cam_trans.c4 = -camera.mPosition.z;
+
+    auto proj_matrix = GetProjectionMatrix(width, height, camera);
+    proj_matrix = cam_rot;
+        // * proj_matrix
+        ;
+
+    for (auto& vertex : vertices) {
+        assert(vertex.size() == 3);
+        std::cout << "v";
+        for (auto& point : vertex) {
+            std::cout << "\t(" << point.x << ", " << point.y << ", " << point.z << ")";
+        }
+        std::cout << std::endl;
+    }
+
+    std::cout << std::endl;
+    for (auto& vertex : vertices) {
+        assert(vertex.size() == 3);
+        std::cout << "(";
+        for (auto& point : vertex) {
+            auto old_point = point;
+            // point.x += camera.mPosition.x;
+            // point.y += camera.mPosition.y;
+            // point.z += camera.mPosition.z;
+
+            point *= proj_matrix;
+            // point.x /= point.z;
+            // point.y /= point.z;
+            std::cout << "(" << point.x << ", " << point.y <<  "),";
+        }
+        std::cout << ")," << std::endl;
+    }
+
 }
