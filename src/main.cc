@@ -5,9 +5,9 @@
 #include <assimp/scene.h>        // Output data structure
 #include <assimp/Importer.hpp>   // C++ importer interface
 
+#include <cassert>
 #include <unordered_map>
 #include <vector>
-#include <cassert>
 #include "ppm.hh"
 
 Assimp::Importer importer;
@@ -30,29 +30,29 @@ void import_scene(const std::string& pFile) {
 
 using Face = std::vector<aiVector3D>;
 
-std::ostream &operator<<(std::ostream &out, const aiVector3D& vec) {
+std::ostream& operator<<(std::ostream& out, const aiVector3D& vec) {
     return out << "<Vec3 " << vec.x << ", " << vec.y << ", " << vec.z << ">";
 }
 
-std::ostream &operator<<(std::ostream &out, const aiMatrix4x4& mat) {
-  out << "<Mat4 ";
-  out << mat.a1 << ", ";
-  out << mat.a2 << ", ";
-  out << mat.a3 << ", ";
-  out << mat.a4 << " | ";
-  out << mat.b1 << ", ";
-  out << mat.b2 << ", ";
-  out << mat.b3 << ", ";
-  out << mat.b4 << " | ";
-  out << mat.c1 << ", ";
-  out << mat.c2 << ", ";
-  out << mat.c3 << ", ";
-  out << mat.c4 << " | ";
-  out << mat.d1 << ", ";
-  out << mat.d2 << ", ";
-  out << mat.d3 << ", ";
-  out << mat.d4 << ">";
-  return out;
+std::ostream& operator<<(std::ostream& out, const aiMatrix4x4& mat) {
+    out << "<Mat4 ";
+    out << mat.a1 << ", ";
+    out << mat.a2 << ", ";
+    out << mat.a3 << ", ";
+    out << mat.a4 << " | ";
+    out << mat.b1 << ", ";
+    out << mat.b2 << ", ";
+    out << mat.b3 << ", ";
+    out << mat.b4 << " | ";
+    out << mat.c1 << ", ";
+    out << mat.c2 << ", ";
+    out << mat.c3 << ", ";
+    out << mat.c4 << " | ";
+    out << mat.d1 << ", ";
+    out << mat.d2 << ", ";
+    out << mat.d3 << ", ";
+    out << mat.d4 << ">";
+    return out;
 }
 
 static void flatten_node(std::vector<Face>& res, aiMatrix4x4 transform,
@@ -118,8 +118,8 @@ aiCamera get_camera(const aiScene* scene) {
 //     3.z = direction.z;
 // }
 
-aiMatrix4x4 GetProjectionMatrix(size_t width, size_t height, const aiCamera &camera)
-{
+aiMatrix4x4 GetProjectionMatrix(size_t width, size_t height,
+                                const aiCamera& camera) {
     const float fFarPlane = camera.mClipPlaneFar;
     const float fNearPlane = camera.mClipPlaneNear;
     const auto fFOV = camera.mHorizontalFOV;
@@ -128,11 +128,32 @@ aiMatrix4x4 GetProjectionMatrix(size_t width, size_t height, const aiCamera &cam
 
     const float fAspect = (float)width / (float)height;
 
-    return aiMatrix4x4(
-        s / fAspect, 0.0f, 0.0f, 0.0f,
-        0.0f, s, 0.0f, 0.0f,
-        0.0f, 0.0f, -Q, -1.0f,
-        0.0f, 0.0f, -Q * fNearPlane, 0.0f);
+    return aiMatrix4x4(s / fAspect, 0.0f, 0.0f, 0.0f, 0.0f, s, 0.0f, 0.0f, 0.0f,
+                       0.0f, -Q, -1.0f, 0.0f, 0.0f, -Q * fNearPlane, 0.0f);
+}
+
+aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
+                   const aiVector3D& up) {
+    auto z = (lookat - center).Normalize();
+    // auto z = (-lookat).Normalize();
+    auto x = (up ^ z).Normalize();
+    auto y = (z ^ x).Normalize();
+    aiMatrix4x4 Minv{};
+    aiMatrix4x4 Tr{};
+
+    Minv.a1 = x[0];
+    Minv.a2 = x[1];
+    Minv.a3 = x[2];
+    Minv.b1 = y[0];
+    Minv.b2 = y[1];
+    Minv.b3 = y[2];
+    Minv.c1 = z[0];
+    Minv.c2 = z[1];
+    Minv.c3 = z[2];
+    Tr.a3 = -center[0];
+    Tr.b3 = -center[1];
+    Tr.c3 = -center[2];
+    return Minv * Tr;
 }
 
 int main(int argc, char* argv[]) {
@@ -162,60 +183,45 @@ int main(int argc, char* argv[]) {
     flatten_node(vertices, aiMatrix4x4{}, scene->mRootNode);
     for (size_t y = 0; y < 42; y++)
         for (size_t x = 0; x < 42; x++)
-            resulting_image[y][x] = Color{(x + y)/100.0, (43 + x - y)/100.0, 0.0};
+            resulting_image[y][x] =
+                Color{(x + y) / 100.0, (43 + x - y) / 100.0, 0.0};
 
     image_render_ppm(resulting_image, out);
 
     std::cout << ">> Objects:" << std::endl;
-    for (auto &e : object_transforms)
-      std::cout << e.first << std::endl;
+    for (auto& e : object_transforms)
+        std::cout << e.first << std::endl;
 
     auto camera = get_camera(scene);
     std::cout << camera.mPosition << std::endl;
     std::cout << camera.mLookAt << std::endl;
     std::cout << camera.mUp << std::endl;
 
-    aiMatrix4x4 cam_rot;
-    camera.GetCameraMatrix(cam_rot);
-    cam_rot.a4 = 0.f;
-    cam_rot.b4 = 0.f;
-    cam_rot.c4 = 0.f;
-
-    aiMatrix4x4 cam_trans;
-    cam_trans.a4 = -camera.mPosition.x;
-    cam_trans.b4 = -camera.mPosition.y;
-    cam_trans.c4 = -camera.mPosition.z;
+    aiMatrix4x4 viewMatrix =
+        lookat(camera.mLookAt, camera.mPosition, camera.mUp);
 
     auto proj_matrix = GetProjectionMatrix(width, height, camera);
-    proj_matrix = cam_rot;
-        // * proj_matrix
-        ;
 
-    for (auto& vertex : vertices) {
-        assert(vertex.size() == 3);
-        std::cout << "v";
-        for (auto& point : vertex) {
-            std::cout << "\t(" << point.x << ", " << point.y << ", " << point.z << ")";
-        }
-        std::cout << std::endl;
-    }
+    // for (auto& vertex : vertices) {
+    //    assert(vertex.size() == 3);
+    //    std::cout << "v";
+    //    for (auto& point : vertex) {
+    //        std::cout << "\t(" << point.x << ", " << point.y << ", " <<
+    //        point.z
+    //                  << ")";
+    //    }
+    //    std::cout << std::endl;
+    //}
 
-    std::cout << std::endl;
     for (auto& vertex : vertices) {
         assert(vertex.size() == 3);
         std::cout << "(";
         for (auto& point : vertex) {
-            auto old_point = point;
-            // point.x += camera.mPosition.x;
-            // point.y += camera.mPosition.y;
-            // point.z += camera.mPosition.z;
-
-            point *= proj_matrix;
-            // point.x /= point.z;
-            // point.y /= point.z;
-            std::cout << "(" << point.x << ", " << point.y <<  "),";
+            point = proj_matrix * viewMatrix * point;
+            point.x /= point.z;
+            point.y /= point.z;
+            std::cout << "(" << point.x << ", " << point.y << "),";
         }
         std::cout << ")," << std::endl;
     }
-
 }
