@@ -134,8 +134,7 @@ aiMatrix4x4 GetProjectionMatrix(size_t width, size_t height,
 
 aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
                    const aiVector3D& up) {
-    auto z = (lookat - center).Normalize();
-    // auto z = (-lookat).Normalize();
+    auto z = (-lookat).Normalize();
     auto x = (up ^ z).Normalize();
     auto y = (z ^ x).Normalize();
     aiMatrix4x4 Minv{};
@@ -150,9 +149,10 @@ aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
     Minv.c1 = z[0];
     Minv.c2 = z[1];
     Minv.c3 = z[2];
-    Tr.a3 = -center[0];
-    Tr.b3 = -center[1];
-    Tr.c3 = -center[2];
+
+    Tr.a4 = -center.x;
+    Tr.b4 = -center.y;
+    Tr.c4 = -center.z;
     return Minv * Tr;
 }
 
@@ -202,26 +202,20 @@ int main(int argc, char* argv[]) {
 
     auto proj_matrix = GetProjectionMatrix(width, height, camera);
 
-    // for (auto& vertex : vertices) {
-    //    assert(vertex.size() == 3);
-    //    std::cout << "v";
-    //    for (auto& point : vertex) {
-    //        std::cout << "\t(" << point.x << ", " << point.y << ", " <<
-    //        point.z
-    //                  << ")";
-    //    }
-    //    std::cout << std::endl;
-    //}
+    std::ofstream pycode("../image.py");
 
+    pycode << "points = [" << std::endl;
     for (auto& vertex : vertices) {
         assert(vertex.size() == 3);
-        std::cout << "(";
+        pycode << "    (";
         for (auto& point : vertex) {
-            point = proj_matrix * viewMatrix * point;
-            point.x /= point.z;
-            point.y /= point.z;
-            std::cout << "(" << point.x << ", " << point.y << "),";
+            point = ((// proj_matrix * 
+                      viewMatrix) * point);
+            // point.x /= point.z;
+            // point.y /= point.z;
+            pycode << "(" << point.x << ", " << point.y << "),";
         }
-        std::cout << ")," << std::endl;
+        pycode << ")," << std::endl;
     }
+    pycode << "]" << std::endl;
 }
