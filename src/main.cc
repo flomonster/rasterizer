@@ -36,22 +36,9 @@ std::ostream& operator<<(std::ostream& out, const aiVector3D& vec) {
 
 std::ostream& operator<<(std::ostream& out, const aiMatrix4x4& mat) {
     out << "<Mat4 ";
-    out << mat.a1 << ", ";
-    out << mat.a2 << ", ";
-    out << mat.a3 << ", ";
-    out << mat.a4 << " | ";
-    out << mat.b1 << ", ";
-    out << mat.b2 << ", ";
-    out << mat.b3 << ", ";
-    out << mat.b4 << " | ";
-    out << mat.c1 << ", ";
-    out << mat.c2 << ", ";
-    out << mat.c3 << ", ";
-    out << mat.c4 << " | ";
-    out << mat.d1 << ", ";
-    out << mat.d2 << ", ";
-    out << mat.d3 << ", ";
-    out << mat.d4 << ">";
+    for (int i = 0; i < 4; i++)
+        out << mat[i][0] << ", " << mat[i][1] << ", " << mat[i][2] << ", "
+            << mat[i][3] << " | ";
     return out;
 }
 
@@ -98,26 +85,6 @@ aiCamera get_camera(const aiScene* scene) {
     return camera;
 }
 
-// aiMatrix4x4 get_camera_transform(up, direction) {
-//     auto xaxis = up ^ direction;
-//     xaxis.Normalize();
-
-//     auto yaxis = direction ^ xaxis;
-//     yaxis.Normalize();
-
-//     1.x = xaxis.x;
-//     1.y = yaxis.x;
-//     1.z = direction.x;
-
-//     2.x = xaxis.y;
-//     2.y = yaxis.y;
-//     2.z = direction.y;
-
-//     3.x = xaxis.z;
-//     3.y = yaxis.z;
-//     3.z = direction.z;
-// }
-
 aiMatrix4x4 GetProjectionMatrix(size_t width, size_t height,
                                 const aiCamera& camera) {
     const float fFarPlane = camera.mClipPlaneFar;
@@ -139,20 +106,12 @@ aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
     auto y = (z ^ x).Normalize();
     aiMatrix4x4 Minv{};
     aiMatrix4x4 Tr{};
-
-    Minv.a1 = x[0];
-    Minv.a2 = x[1];
-    Minv.a3 = x[2];
-    Minv.b1 = y[0];
-    Minv.b2 = y[1];
-    Minv.b3 = y[2];
-    Minv.c1 = z[0];
-    Minv.c2 = z[1];
-    Minv.c3 = z[2];
-
-    Tr.a4 = -center.x;
-    Tr.b4 = -center.y;
-    Tr.c4 = -center.z;
+    for (int i = 0; i < 3; i++) {
+        Minv[0][i] = x[i];
+        Minv[1][i] = y[i];
+        Minv[2][i] = z[i];
+        Tr[i][3] = -center[i];
+    }
     return Minv * Tr;
 }
 
@@ -209,8 +168,9 @@ int main(int argc, char* argv[]) {
         assert(vertex.size() == 3);
         pycode << "    (";
         for (auto& point : vertex) {
-            point = ((// proj_matrix * 
-                      viewMatrix) * point);
+            point = ((  // proj_matrix *
+                         viewMatrix) *
+                     point);
             // point.x /= point.z;
             // point.y /= point.z;
             pycode << "(" << point.x << ", " << point.y << "),";
