@@ -154,24 +154,19 @@ int main(int argc, char* argv[]) {
 
     auto proj_matrix = GetProjectionMatrix(width, height, camera);
 
-    std::ofstream pycode("../image.py");
-
-    pycode << "points = [" << std::endl;
     for (auto& vertex : vertices) {
         assert(vertex.size() == 3);
-        pycode << "    (";
         for (auto& point : vertex) {
             point = ((  // proj_matrix *
                          viewMatrix) *
                      point);
             // point.x /= point.z;
             // point.y /= point.z;
-            pycode << "(" << point.x << ", " << point.y << "),";
         }
-        pycode << ")," << std::endl;
     }
-    pycode << "]" << std::endl;
-    draw::draw(vertices, resulting_image);
 
+    // Draw the scene
+    draw::draw(vertices, resulting_image);
+    // Save the rendered scene
     image_render_ppm(resulting_image, out);
 }
