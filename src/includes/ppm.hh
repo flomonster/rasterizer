@@ -1,16 +1,13 @@
 #pragma once
 
-#include "color.hh"
 #include <iostream>
 #include <vector>
+#include "color.hh"
 
 using Pixel = Color;
 
-struct Image
-{
-    Image(size_t w, size_t h) :
-        w(w), h(h), data_(w * h)
-    {       
+struct Image {
+    Image(size_t w, size_t h) : w(w), h(h), data_(w * h) {
     }
 
     size_t w;
@@ -24,7 +21,7 @@ struct Image
         return &data_[y * w];
     }
 
-private:
+   private:
     std::vector<Pixel> data_;
 };
 

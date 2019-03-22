@@ -8,6 +8,7 @@
 #include <cassert>
 #include <unordered_map>
 #include <vector>
+#include "draw.hh"
 #include "ppm.hh"
 
 Assimp::Importer importer;
@@ -27,8 +28,6 @@ void import_scene(const std::string& pFile) {
     if (!scene)
         throw std::runtime_error(importer.GetErrorString());
 }
-
-using Face = std::vector<aiVector3D>;
 
 std::ostream& operator<<(std::ostream& out, const aiVector3D& vec) {
     return out << "<Vec3 " << vec.x << ", " << vec.y << ", " << vec.z << ">";
@@ -135,17 +134,11 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    size_t width = 42;
-    size_t height = 42;
+    size_t width = 1920;
+    size_t height = 1080;
     Image resulting_image{width, height};
     std::vector<Face> vertices;
     flatten_node(vertices, aiMatrix4x4{}, scene->mRootNode);
-    for (size_t y = 0; y < 42; y++)
-        for (size_t x = 0; x < 42; x++)
-            resulting_image[y][x] =
-                Color{(x + y) / 100.0, (43 + x - y) / 100.0, 0.0};
-
-    image_render_ppm(resulting_image, out);
 
     std::cout << ">> Objects:" << std::endl;
     for (auto& e : object_transforms)
@@ -178,4 +171,7 @@ int main(int argc, char* argv[]) {
         pycode << ")," << std::endl;
     }
     pycode << "]" << std::endl;
+    draw::draw(vertices, resulting_image);
+
+    image_render_ppm(resulting_image, out);
 }
