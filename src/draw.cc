@@ -42,12 +42,12 @@ void line(const aiVector3D& a, const aiVector3D& b, Image& img,
 
 aiVector3D barycentric(const Face& face, float x, float y) {
     aiVector3D u{aiVector3D{face[2][0] - face[0][0], face[1][0] - face[0][0],
-                            face[0][0] - x} *
+                            face[0][0] - x} ^
                  aiVector3D{face[2][1] - face[0][1], face[1][1] - face[0][1],
                             face[0][1] - y}};
     if (std::abs(u[2]) < 1)
-        return {-1, -1, -1};
-    return {1 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z};
+        return {-1, 1, 1};
+    return {1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z};
 }
 
 void triangle(const Face& face, Image& img, const Color& col) {
