@@ -64,14 +64,17 @@ void triangle(const Face& face, Image& img, const Color& col) {
     for (int x = boxmin.x; x < boxmax.x; x++)
         for (int y = boxmin.y; y < boxmax.y; y++) {
             auto bc_screen = barycentric(face, x, y);
-            if (bc_screen.x >= 0 && bc_screen.y >= 0 && bc_screen.z >= 0)
-                img[y + img.h / 2][x + img.w / 2] = col;
+            if (bc_screen.x >= 0 && bc_screen.y >= 0 && bc_screen.z >= 0) {
+                // TODO: Improve the calculation of z
+                img.draw({x, y, face[0].z}, col);
+            }
         }
 }
 
 void draw(const std::vector<Face>& faces, Image& img) {
-    Color c{1, 1, 1};
     for (const auto& f : faces) {
+        Color c{(float)std::rand() / RAND_MAX, (float)std::rand() / RAND_MAX,
+                (float)std::rand() / RAND_MAX};
         // line(f[0], f[1], img, c);
         // line(f[1], f[2], img, c);
         // line(f[2], f[0], img, c);
