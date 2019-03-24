@@ -40,12 +40,42 @@ void line(const aiVector3D& a, const aiVector3D& b, Image& img,
     }
 }
 
+aiVector3D barycentric(const Face& face, float x, float y) {
+    aiVector3D u{aiVector3D{face[2][0] - face[0][0], face[1][0] - face[0][0],
+                            face[0][0] - x} *
+                 aiVector3D{face[2][1] - face[0][1], face[1][1] - face[0][1],
+                            face[0][1] - y}};
+    if (std::abs(u[2]) < 1)
+        return {-1, -1, -1};
+    return {1 - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z};
+}
+
+void triangle(const Face& face, Image& img, const Color& col) {
+    aiVector3D boxmin{img.w / 2.f - 1, img.h / 2.f - 1, 0};
+    aiVector3D boxmax{img.w / -2.f, img.h / -2.f, 0};
+    const aiVector3D clamp_max{img.w / 2.f - 1, img.h / 2.f - 1, 0};
+    const aiVector3D clamp_min{img.w / -2.f, img.h / -2.f, 0};
+    for (auto i = 0; i < 3; i++)
+        for (auto j = 0; j < 2; j++) {
+            boxmin[j] = std::max(clamp_min[j], std::min(boxmin[j], face[i][j]));
+            boxmax[j] = std::min(clamp_max[j], std::max(boxmax[j], face[i][j]));
+        }
+
+    for (int x = boxmin.x; x < boxmax.x; x++)
+        for (int y = boxmin.y; y < boxmax.y; y++) {
+            auto bc_screen = barycentric(face, x, y);
+            if (bc_screen.x >= 0 && bc_screen.y >= 0 && bc_screen.z >= 0)
+                img[y + img.h / 2][x + img.w / 2] = col;
+        }
+}
+
 void draw(const std::vector<Face>& faces, Image& img) {
     Color c{1, 1, 1};
     for (const auto& f : faces) {
-        line(f[0], f[1], img, c);
-        line(f[1], f[2], img, c);
-        line(f[2], f[0], img, c);
+        // line(f[0], f[1], img, c);
+        // line(f[1], f[2], img, c);
+        // line(f[2], f[0], img, c);
+        triangle(f, img, c);
     }
 }
 

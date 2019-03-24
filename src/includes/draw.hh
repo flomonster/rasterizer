@@ -14,5 +14,6 @@ void line(const aiVector3D& a, const aiVector3D& b, Image& img,
           const Color& col);
 
 void draw(const std::vector<Face>& vertices, Image& img);
+void triangle(const Face& face, Image& img, const Color& col);
 
 }  // namespace draw
