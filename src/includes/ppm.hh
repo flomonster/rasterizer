@@ -14,7 +14,7 @@ struct Image {
         : w(w),
           h(h),
           data_(w * h),
-          zbuffer_(w * h, std::numeric_limits<float>::min()),
+          zbuffer_(w * h, std::numeric_limits<float>::max()),
           w2_(w / 2),
           h2_(h / 2) {
     }
@@ -34,7 +34,7 @@ struct Image {
         int x = p.x + w2_;
         int y = p.y + h2_;
         if (x < 0 || x >= (int)w || y < 0 || y >= (int)h ||
-            p.z < zbuffer_[y * w + x])
+            p.z > zbuffer_[y * w + x])
             return;
         zbuffer_[y * w + x] = p.z;
         data_[y * w + x] = col;
