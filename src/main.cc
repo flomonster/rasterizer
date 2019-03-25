@@ -86,16 +86,31 @@ aiCamera get_camera(const aiScene* scene) {
 
 aiMatrix4x4 GetProjectionMatrix(size_t width, size_t height,
                                 const aiCamera& camera) {
-    const float fFarPlane = camera.mClipPlaneFar;
-    const float fNearPlane = camera.mClipPlaneNear;
-    const auto fFOV = camera.mHorizontalFOV;
-    const float s = 1.0f / tanf(fFOV * 0.5f);
-    const float Q = fFarPlane / (fFarPlane - fNearPlane);
+    // const float fFarPlane = camera.mClipPlaneFar;
+    // const float fNearPlane = camera.mClipPlaneNear;
+    // const auto fFOV = camera.mHorizontalFOV;
+    // const float s = 1.0f / tanf(fFOV * 0.5f);
+    // const float Q = fFarPlane / (fFarPlane - fNearPlane);
 
-    const float fAspect = (float)width / (float)height;
+    // const float fAspect = (float)width / (float)height;
 
-    return aiMatrix4x4(s / fAspect, 0.0f, 0.0f, 0.0f, 0.0f, s, 0.0f, 0.0f, 0.0f,
-                       0.0f, -Q, -1.0f, 0.0f, 0.0f, -Q * fNearPlane, 0.0f);
+    // return aiMatrix4x4(s / fAspect, 0.0f, 0.0f, 0.0f, 0.0f, s, 0.0f, 0.0f, 0.0f,
+    //                    0.0f, -Q, -1.0f, 0.0f, 0.0f, -Q * fNearPlane, 0.0f);
+    return aiMatrix4x4(1.0f, 0.0f, 0.0f, 0.0f,
+                       0.0f, 1.0f, 0.0f, 0.0f,
+                       0.0f, 0.0f, 1.0f, 0.0f,
+                       0.0f, 0.0f, -(1.0f/430), 1.0f);
+}
+
+template<class TReal>
+aiVector3t<TReal> multProject (const aiMatrix4x4t<TReal>& pMatrix,
+                               const aiVector3t<TReal>& pVector) {
+    aiVector3t<TReal> res;
+    auto w = (1 + pMatrix.d1 * pVector.x + pMatrix.d2 * pVector.y + pMatrix.d3 * pVector.z + pMatrix.d4);
+    res.x = (pMatrix.a1 * pVector.x + pMatrix.a2 * pVector.y + pMatrix.a3 * pVector.z + pMatrix.a4) / w;
+    res.y = (pMatrix.b1 * pVector.x + pMatrix.b2 * pVector.y + pMatrix.b3 * pVector.z + pMatrix.b4) / w;
+    res.z = (pMatrix.c1 * pVector.x + pMatrix.c2 * pVector.y + pMatrix.c3 * pVector.z + pMatrix.c4) / w;
+    return res;
 }
 
 aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
@@ -157,11 +172,8 @@ int main(int argc, char* argv[]) {
     for (auto& vertex : vertices) {
         assert(vertex.size() == 3);
         for (auto& point : vertex) {
-            point = ((  // proj_matrix *
-                         viewMatrix) *
-                     point);
-            // point.x /= point.z;
-            // point.y /= point.z;
+            point = viewMatrix * point;
+            point = multProject(proj_matrix, point);
         }
     }
 
