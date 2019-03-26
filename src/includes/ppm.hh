@@ -14,13 +14,15 @@ struct Image {
         : w(w),
           h(h),
           data_(w * h),
-          zbuffer_(w * h, std::numeric_limits<float>::max()),
-          w2_(w / 2),
-          h2_(h / 2) {
+          zbuffer_(w * h, std::numeric_limits<float>::min()),
+          w2(w / 2),
+          h2(h / 2) {
     }
 
     size_t w;
     size_t h;
+    size_t w2;
+    size_t h2;
 
     Pixel* operator[](size_t y) {
         return &data_[y * w];
@@ -31,20 +33,18 @@ struct Image {
     }
 
     void draw(const aiVector3D& p, const Color& col) {
-        int x = p.x + w2_;
-        int y = p.y + h2_;
+        int x = p.x;
+        int y = p.y;
         if (x < 0 || x >= (int)w || y < 0 || y >= (int)h ||
-            p.z > zbuffer_[y * w + x])
+            p.z < zbuffer_[y * w + x])
             return;
         zbuffer_[y * w + x] = p.z;
-        data_[y * w + x] = col;
+        data_[(h - y - 1) * w + x] = col;
     }
 
    private:
     std::vector<Pixel> data_;
     std::vector<float> zbuffer_;
-    size_t w2_;
-    size_t h2_;
 };
 
 std::ostream& image_render_ppm(const Image& img, std::ostream& out);

@@ -50,11 +50,16 @@ aiVector3D barycentric(const Face& face, float x, float y) {
     return {1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z};
 }
 
-void triangle(const Face& face, Image& img, const Color& col) {
-    aiVector3D boxmin{img.w / 2.f - 1, img.h / 2.f - 1, 0};
-    aiVector3D boxmax{img.w / -2.f, img.h / -2.f, 0};
-    const aiVector3D clamp_max{img.w / 2.f - 1, img.h / 2.f - 1, 0};
-    const aiVector3D clamp_min{img.w / -2.f, img.h / -2.f, 0};
+void triangle(const Face& f, Image& img, const Color& col) {
+    auto face = f;
+    for (auto& v : face) {
+        v.x = (v.x + 1) * img.w2;
+        v.y = (v.y + 1) * img.h2;
+    }
+    aiVector3D boxmin{(float)img.w, (float)img.h, 0};
+    aiVector3D boxmax{0, 0, 0};
+    const aiVector3D clamp_max{(float)img.w, (float)img.h, 0};
+    const aiVector3D clamp_min{0, 0, 0};
     for (auto i = 0; i < 3; i++)
         for (auto j = 0; j < 2; j++) {
             boxmin[j] = std::max(clamp_min[j], std::min(boxmin[j], face[i][j]));

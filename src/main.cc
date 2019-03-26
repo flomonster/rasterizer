@@ -5,13 +5,13 @@
 #include <assimp/scene.h>        // Output data structure
 #include <assimp/Importer.hpp>   // C++ importer interface
 
-#include <initializer_list>
+#include <algorithm>
 #include <cassert>
+#include <initializer_list>
 #include <unordered_map>
 #include <vector>
 #include "draw.hh"
 #include "ppm.hh"
-#include <algorithm>
 
 Assimp::Importer importer;
 const aiScene* scene;
@@ -102,30 +102,37 @@ aiCamera get_camera(const aiScene* scene) {
 aiMatrix4x4 GetProjectionMatrix(const aiCamera& camera) {
     const float far = camera.mClipPlaneFar;
     const float near = camera.mClipPlaneNear;
-    const auto xscale = 1.f / tan(camera.mHorizontalFOV/2);
+    const auto xscale = 1.f / tan(camera.mHorizontalFOV / 2);
     const auto yscale = xscale * camera.mAspect;
 
     auto Q = -far / (far - near);
-    auto res =  aiMatrix4x4(
-        xscale, 0.0f, 0.0f, 0.0f,
-        0.0f, yscale, 0.0f, 0.0f,
-        0.0f, 0.0f, Q, Q * near, // this last coef is broken according to blender, needs more attention
-        0.0f, 0.0f, -1.0f, 0.0f);
+    auto res =
+        aiMatrix4x4(xscale, 0.0f, 0.0f, 0.0f, 0.0f, yscale, 0.0f, 0.0f, 0.0f,
+                    0.0f, Q, Q * near,  // this last coef is broken according to
+                                        // blender, needs more attention
+                    0.0f, 0.0f, -1.0f, 0.0f);
 
     std::cout << "Camera matrix: " << std::endl;
     std::cout << res;
     return res;
 }
 
-template<class TReal>
-aiVector3t<TReal> multProject (const aiMatrix4x4t<TReal>& pMatrix,
-                               const aiVector3t<TReal>& pVector) {
+template <class TReal>
+aiVector3t<TReal> multProject(const aiMatrix4x4t<TReal>& pMatrix,
+                              const aiVector3t<TReal>& pVector) {
     aiVector3t<TReal> res;
     // TODO: there was a 1 + right before d1 here. is it useful ?
-    auto w = (pMatrix.d1 * pVector.x + pMatrix.d2 * pVector.y + pMatrix.d3 * pVector.z + pMatrix.d4);
-    res.x = (pMatrix.a1 * pVector.x + pMatrix.a2 * pVector.y + pMatrix.a3 * pVector.z + pMatrix.a4) / w;
-    res.y = (pMatrix.b1 * pVector.x + pMatrix.b2 * pVector.y + pMatrix.b3 * pVector.z + pMatrix.b4) / w;
-    res.z = (pMatrix.c1 * pVector.x + pMatrix.c2 * pVector.y + pMatrix.c3 * pVector.z + pMatrix.c4) / w;
+    auto w = (pMatrix.d1 * pVector.x + pMatrix.d2 * pVector.y +
+              pMatrix.d3 * pVector.z + pMatrix.d4);
+    res.x = (pMatrix.a1 * pVector.x + pMatrix.a2 * pVector.y +
+             pMatrix.a3 * pVector.z + pMatrix.a4) /
+            w;
+    res.y = (pMatrix.b1 * pVector.x + pMatrix.b2 * pVector.y +
+             pMatrix.b3 * pVector.z + pMatrix.b4) /
+            w;
+    res.z = (pMatrix.c1 * pVector.x + pMatrix.c2 * pVector.y +
+             pMatrix.c3 * pVector.z + pMatrix.c4) /
+            w;
     return res;
 }
 
@@ -187,29 +194,10 @@ int main(int argc, char* argv[]) {
             point = viewMatrix * point;
             point = multProject(proj_matrix, point);
         }
-
-        for (auto &[pa, pb] : {
-                std::tie(vertex[0], vertex[1]),
-                std::tie(vertex[1], vertex[2]),
-                std::tie(vertex[2], vertex[0])
-             }) {
-            const size_t total_divs = 100;
-            auto pvec = (pb - pa) * (1.0f / total_divs);
-            for (size_t i = 0; i < total_divs; i++) {
-                auto point = pa + pvec * (float)i;
-                if (point.x < -1 || point.x > 1 ||
-                    point.y < -1 || point.y > 1)
-                    continue;
-
-                uint32_t x = std::min(width - 1, (size_t)((point.x + 1) * 0.5 * width));
-                uint32_t y = std::min(height - 1, (size_t)((1 - (point.y + 1) * 0.5) * height));
-                resulting_image[y][x] = Color{1, 1, 1};
-            }
-        }
     }
 
-    // // Draw the scene
-    // draw::draw(vertices, resulting_image);
+    // Draw the scene
+    draw::draw(vertices, resulting_image);
 
     // Save the rendered scene
     image_render_ppm(resulting_image, out);
