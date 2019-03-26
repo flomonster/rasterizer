@@ -5,11 +5,13 @@
 #include <assimp/scene.h>        // Output data structure
 #include <assimp/Importer.hpp>   // C++ importer interface
 
+#include <initializer_list>
 #include <cassert>
 #include <unordered_map>
 #include <vector>
 #include "draw.hh"
 #include "ppm.hh"
+#include <algorithm>
 
 Assimp::Importer importer;
 const aiScene* scene;
@@ -35,9 +37,12 @@ std::ostream& operator<<(std::ostream& out, const aiVector3D& vec) {
 
 std::ostream& operator<<(std::ostream& out, const aiMatrix4x4& mat) {
     out << "<Mat4 ";
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) {
+        if (i)
+            out << "      ";
         out << mat[i][0] << ", " << mat[i][1] << ", " << mat[i][2] << ", "
-            << mat[i][3] << " | ";
+            << mat[i][3] << (i < 3 ? "\n" : ">");
+    }
     return out;
 }
 
@@ -77,36 +82,47 @@ aiCamera get_camera(const aiScene* scene) {
     auto camera = *scene->mCameras[0];
     auto camera_name = std::string{camera.mName.data, camera.mName.length};
     const auto& transform = object_transforms[camera_name];
-    std::cout << "> transform is: " << transform << std::endl;
-    camera.mPosition *= transform;
-    camera.mLookAt *= transform;
-    camera.mUp *= transform;
+    std::cout << "> transform is: " << std::endl << transform << std::endl;
+
+    aiMatrix4x4 rotation;
+    for (size_t i = 0; i < 3; i++)
+        for (size_t j = 0; j < 3; j++)
+            rotation[i][j] = transform[i][j];
+
+    aiMatrix4x4 translation;
+    for (size_t i = 0; i < 3; i++)
+        translation[i][3] = transform[i][3];
+
+    camera.mPosition *= translation;
+    camera.mLookAt *= rotation;
+    camera.mUp *= rotation;
     return camera;
 }
 
-aiMatrix4x4 GetProjectionMatrix(size_t width, size_t height,
-                                const aiCamera& camera) {
-    // const float fFarPlane = camera.mClipPlaneFar;
-    // const float fNearPlane = camera.mClipPlaneNear;
-    // const auto fFOV = camera.mHorizontalFOV;
-    // const float s = 1.0f / tanf(fFOV * 0.5f);
-    // const float Q = fFarPlane / (fFarPlane - fNearPlane);
+aiMatrix4x4 GetProjectionMatrix(const aiCamera& camera) {
+    const float far = camera.mClipPlaneFar;
+    const float near = camera.mClipPlaneNear;
+    const auto xscale = 1.f / tan(camera.mHorizontalFOV/2);
+    const auto yscale = xscale * camera.mAspect;
 
-    // const float fAspect = (float)width / (float)height;
+    auto Q = -far / (far - near);
+    auto res =  aiMatrix4x4(
+        xscale, 0.0f, 0.0f, 0.0f,
+        0.0f, yscale, 0.0f, 0.0f,
+        0.0f, 0.0f, Q, Q * near, // this last coef is broken according to blender, needs more attention
+        0.0f, 0.0f, -1.0f, 0.0f);
 
-    // return aiMatrix4x4(s / fAspect, 0.0f, 0.0f, 0.0f, 0.0f, s, 0.0f, 0.0f, 0.0f,
-    //                    0.0f, -Q, -1.0f, 0.0f, 0.0f, -Q * fNearPlane, 0.0f);
-    return aiMatrix4x4(1.0f, 0.0f, 0.0f, 0.0f,
-                       0.0f, 1.0f, 0.0f, 0.0f,
-                       0.0f, 0.0f, 1.0f, 0.0f,
-                       0.0f, 0.0f, -(1.0f/430), 1.0f);
+    std::cout << "Camera matrix: " << std::endl;
+    std::cout << res;
+    return res;
 }
 
 template<class TReal>
 aiVector3t<TReal> multProject (const aiMatrix4x4t<TReal>& pMatrix,
                                const aiVector3t<TReal>& pVector) {
     aiVector3t<TReal> res;
-    auto w = (1 + pMatrix.d1 * pVector.x + pMatrix.d2 * pVector.y + pMatrix.d3 * pVector.z + pMatrix.d4);
+    // TODO: there was a 1 + right before d1 here. is it useful ?
+    auto w = (pMatrix.d1 * pVector.x + pMatrix.d2 * pVector.y + pMatrix.d3 * pVector.z + pMatrix.d4);
     res.x = (pMatrix.a1 * pVector.x + pMatrix.a2 * pVector.y + pMatrix.a3 * pVector.z + pMatrix.a4) / w;
     res.y = (pMatrix.b1 * pVector.x + pMatrix.b2 * pVector.y + pMatrix.b3 * pVector.z + pMatrix.b4) / w;
     res.z = (pMatrix.c1 * pVector.x + pMatrix.c2 * pVector.y + pMatrix.c3 * pVector.z + pMatrix.c4) / w;
@@ -115,9 +131,9 @@ aiVector3t<TReal> multProject (const aiMatrix4x4t<TReal>& pMatrix,
 
 aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
                    const aiVector3D& up) {
-    auto z = (-lookat).Normalize();
-    auto x = (up ^ z).Normalize();
-    auto y = (z ^ x).Normalize();
+    auto z = aiVector3D(lookat).Normalize();
+    auto x = (up ^ lookat).Normalize();
+    auto y = (x ^ z).Normalize();
     aiMatrix4x4 Minv{};
     aiMatrix4x4 Tr{};
     for (int i = 0; i < 3; i++) {
@@ -155,10 +171,6 @@ int main(int argc, char* argv[]) {
     std::vector<Face> vertices;
     flatten_node(vertices, aiMatrix4x4{}, scene->mRootNode);
 
-    std::cout << ">> Objects:" << std::endl;
-    for (auto& e : object_transforms)
-        std::cout << e.first << std::endl;
-
     auto camera = get_camera(scene);
     std::cout << camera.mPosition << std::endl;
     std::cout << camera.mLookAt << std::endl;
@@ -167,7 +179,7 @@ int main(int argc, char* argv[]) {
     aiMatrix4x4 viewMatrix =
         lookat(camera.mLookAt, camera.mPosition, camera.mUp);
 
-    auto proj_matrix = GetProjectionMatrix(width, height, camera);
+    auto proj_matrix = GetProjectionMatrix(camera);
 
     for (auto& vertex : vertices) {
         assert(vertex.size() == 3);
@@ -175,10 +187,30 @@ int main(int argc, char* argv[]) {
             point = viewMatrix * point;
             point = multProject(proj_matrix, point);
         }
+
+        for (auto &[pa, pb] : {
+                std::tie(vertex[0], vertex[1]),
+                std::tie(vertex[1], vertex[2]),
+                std::tie(vertex[2], vertex[0])
+             }) {
+            const size_t total_divs = 100;
+            auto pvec = (pb - pa) * (1.0f / total_divs);
+            for (size_t i = 0; i < total_divs; i++) {
+                auto point = pa + pvec * (float)i;
+                if (point.x < -1 || point.x > 1 ||
+                    point.y < -1 || point.y > 1)
+                    continue;
+
+                uint32_t x = std::min(width - 1, (size_t)((point.x + 1) * 0.5 * width));
+                uint32_t y = std::min(height - 1, (size_t)((1 - (point.y + 1) * 0.5) * height));
+                resulting_image[y][x] = Color{1, 1, 1};
+            }
+        }
     }
 
-    // Draw the scene
-    draw::draw(vertices, resulting_image);
+    // // Draw the scene
+    // draw::draw(vertices, resulting_image);
+
     // Save the rendered scene
     image_render_ppm(resulting_image, out);
 }
