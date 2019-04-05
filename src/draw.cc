@@ -4,42 +4,6 @@
 
 namespace draw {
 
-/**
- * Draw a line with a specific color
- */
-void line(const aiVector3D& a, const aiVector3D& b, Image& img,
-          const Color& col) {
-    bool steep = false;
-    auto p_min = aiVector3D{a.x, a.y, 0};
-    auto p_max = aiVector3D{b.x, b.y, 0};
-    if (std::abs(a.x - b.x) < std::abs(a.y - b.y)) {
-        std::swap(p_min.x, p_min.y);
-        std::swap(p_max.x, p_max.y);
-        steep = true;
-    }
-    if (p_min.x > p_max.x) {
-        std::swap(p_min.x, p_max.x);
-        std::swap(p_min.y, p_max.y);
-    }
-    float derror = std::abs((p_max.y - p_min.y) / (p_max.x - p_min.x));
-    float error = 0;
-    int align_y = steep ? img.w / 2 : img.h / 2;
-    int align_x = steep ? img.h / 2 : img.w / 2;
-    int y = p_min.y + align_y;
-    for (int x = p_min.x + align_x; x <= p_max.x + align_x; x++) {
-        if (steep)
-            img[x][y] = col;
-        else
-            img[y][x] = col;
-
-        error += derror;
-        if (error > .5) {
-            y += (p_max.y > p_min.y ? 1 : -1);
-            error -= 1.;
-        }
-    }
-}
-
 aiVector3D barycentric(const Face& face, float x, float y) {
     aiVector3D u{aiVector3D{face[2][0] - face[0][0], face[1][0] - face[0][0],
                             face[0][0] - x} ^
@@ -50,7 +14,7 @@ aiVector3D barycentric(const Face& face, float x, float y) {
     return {1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z};
 }
 
-void triangle(const Face& f, Image& img, const Color& col) {
+void triangle(const Face& f, Image& img, const Shader& shader) {
     auto face = f;
     for (auto& v : face) {
         v.x = (v.x + 1) * img.w2;
@@ -66,25 +30,42 @@ void triangle(const Face& f, Image& img, const Color& col) {
             boxmax[j] = std::min(clamp_max[j], std::max(boxmax[j], face[i][j]));
         }
 
+    // translate the bounding box to normalized -1 to 1 coordinates
+    aiVector3D norm_boxmin{boxmin.x / img.w - 1, boxmin.y / img.h - 1, 0};
+    aiVector3D norm_boxmax{boxmax.x / img.w - 1, boxmax.y / img.h - 1, 0};
+
+    float box_width = boxmax.x - boxmin.x;
+    float box_height = boxmax.y - boxmin.y;
+
+    float norm_box_width = norm_boxmax.x - norm_boxmin.x;
+    float norm_box_height = norm_boxmax.y - norm_boxmin.y;
+
+    // multiplying by these floats translates an x or y of the bounding
+    // box to normalized dimensions
+    float box_w_ratio = norm_box_width / box_width;
+    float box_h_ratio = norm_box_height / box_height;
+
     for (int x = boxmin.x; x < boxmax.x; x++)
         for (int y = boxmin.y; y < boxmax.y; y++) {
             auto bc_screen = barycentric(face, x, y);
-            if (bc_screen.x >= 0 && bc_screen.y >= 0 && bc_screen.z >= 0) {
-                // TODO: Improve the calculation of z
-                img.draw({x, y, face[0].z}, col);
-            }
+
+            // not in the triangle
+            if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0)
+                continue;
+
+            // TODO: Improve the calculation of z
+            auto depth = face[0].z;
+            auto norm_point_x = norm_boxmin.x + x * box_w_ratio;
+            auto norm_point_y = norm_boxmin.y + y * box_h_ratio;
+            aiVector3D norm_point{norm_point_x, norm_point_y, depth};
+            auto color = shader.fragment(norm_point);
+            img.draw({x, y, depth}, color);
         }
 }
 
-void draw(const std::vector<Face>& faces, Image& img) {
-    for (const auto& f : faces) {
-        Color c{(float)std::rand() / RAND_MAX, (float)std::rand() / RAND_MAX,
-                (float)std::rand() / RAND_MAX};
-        // line(f[0], f[1], img, c);
-        // line(f[1], f[2], img, c);
-        // line(f[2], f[0], img, c);
-        triangle(f, img, c);
-    }
+void draw(const std::vector<std::pair<Face, Shader>>& faces, Image& img) {
+    for (const auto& [face, shader] : faces)
+        triangle(face, img, shader);
 }
 
 }  // namespace draw

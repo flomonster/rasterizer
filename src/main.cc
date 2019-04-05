@@ -1,15 +1,16 @@
+#include <algorithm>
+#include <cassert>
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <assimp/postprocess.h>  // Post processing flags
 #include <assimp/scene.h>        // Output data structure
 #include <assimp/Importer.hpp>   // C++ importer interface
 
-#include <algorithm>
-#include <cassert>
-#include <initializer_list>
-#include <unordered_map>
-#include <vector>
+#include "shader.hh"
 #include "draw.hh"
 #include "ppm.hh"
 
@@ -46,7 +47,8 @@ std::ostream& operator<<(std::ostream& out, const aiMatrix4x4& mat) {
     return out;
 }
 
-static void flatten_node(std::vector<Face>& res, aiMatrix4x4 transform,
+static void flatten_node(std::vector<std::pair<Face, Shader>>& res,
+                         aiMatrix4x4 transform,
                          const struct aiNode* node) {
     transform *= node->mTransformation;
 
@@ -56,19 +58,19 @@ static void flatten_node(std::vector<Face>& res, aiMatrix4x4 transform,
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         auto mesh = scene->mMeshes[node->mMeshes[i]];
         for (unsigned int j = 0; j < mesh->mNumFaces; j++) {
-            auto face_vec = Face();
-            face_vec.reserve(3);
-            for (unsigned int k = 0; k < mesh->mFaces[j].mNumIndices; k++) {
+            auto face = Face();
+            auto num_vertices = mesh->mFaces[j].mNumIndices;
+            assert(num_vertices == 3);
+            for (unsigned int k = 0; k < num_vertices; k++) {
                 auto vertice = mesh->mVertices[mesh->mFaces[j].mIndices[k]];
-                std::cout << vertice.x << ' ' << vertice.y << ' ' << vertice.z
-                          << '\n';
                 vertice *= transform;
-                face_vec.push_back(vertice);
-                std::cout << vertice.x << ' ' << vertice.y << ' ' << vertice.z
-                          << '\n';
+                face[k] = vertice;
             }
-            assert(face_vec.size() == 3);
-            res.push_back(std::move(face_vec));
+
+            Shader face_shader;
+            if (!face_shader.face(face, *mesh))
+                continue;
+            res.emplace_back(face, face_shader);
         }
     }
 
@@ -82,7 +84,6 @@ aiCamera get_camera(const aiScene* scene) {
     auto camera = *scene->mCameras[0];
     auto camera_name = std::string{camera.mName.data, camera.mName.length};
     const auto& transform = object_transforms[camera_name];
-    std::cout << "> transform is: " << std::endl << transform << std::endl;
 
     aiMatrix4x4 rotation;
     for (size_t i = 0; i < 3; i++)
@@ -102,38 +103,15 @@ aiCamera get_camera(const aiScene* scene) {
 aiMatrix4x4 GetProjectionMatrix(const aiCamera& camera) {
     const float far = camera.mClipPlaneFar;
     const float near = camera.mClipPlaneNear;
-    const auto xscale = 1.f / tan(camera.mHorizontalFOV / 2);
+    const auto xscale = 1.f / tan(camera.mHorizontalFOV/2);
     const auto yscale = xscale * camera.mAspect;
 
     auto Q = -far / (far - near);
-    auto res =
-        aiMatrix4x4(xscale, 0.0f, 0.0f, 0.0f, 0.0f, yscale, 0.0f, 0.0f, 0.0f,
-                    0.0f, Q, Q * near,  // this last coef is broken according to
-                                        // blender, needs more attention
-                    0.0f, 0.0f, -1.0f, 0.0f);
-
-    std::cout << "Camera matrix: " << std::endl;
-    std::cout << res;
-    return res;
-}
-
-template <class TReal>
-aiVector3t<TReal> multProject(const aiMatrix4x4t<TReal>& pMatrix,
-                              const aiVector3t<TReal>& pVector) {
-    aiVector3t<TReal> res;
-    // TODO: there was a 1 + right before d1 here. is it useful ?
-    auto w = (pMatrix.d1 * pVector.x + pMatrix.d2 * pVector.y +
-              pMatrix.d3 * pVector.z + pMatrix.d4);
-    res.x = (pMatrix.a1 * pVector.x + pMatrix.a2 * pVector.y +
-             pMatrix.a3 * pVector.z + pMatrix.a4) /
-            w;
-    res.y = (pMatrix.b1 * pVector.x + pMatrix.b2 * pVector.y +
-             pMatrix.b3 * pVector.z + pMatrix.b4) /
-            w;
-    res.z = (pMatrix.c1 * pVector.x + pMatrix.c2 * pVector.y +
-             pMatrix.c3 * pVector.z + pMatrix.c4) /
-            w;
-    return res;
+    return  aiMatrix4x4(
+        xscale, 0.0f, 0.0f, 0.0f,
+        0.0f, yscale, 0.0f, 0.0f,
+        0.0f, 0.0f, Q, Q * near, // this last coef is broken according to blender, needs more attention
+        0.0f, 0.0f, -1.0f, 0.0f);
 }
 
 aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
@@ -175,26 +153,17 @@ int main(int argc, char* argv[]) {
     size_t width = 1920;
     size_t height = 1080;
     Image resulting_image{width, height};
-    std::vector<Face> vertices;
+    std::vector<std::pair<Face, Shader>> vertices;
     flatten_node(vertices, aiMatrix4x4{}, scene->mRootNode);
 
     auto camera = get_camera(scene);
-    std::cout << camera.mPosition << std::endl;
-    std::cout << camera.mLookAt << std::endl;
-    std::cout << camera.mUp << std::endl;
+    auto proj_matrix = (
+        GetProjectionMatrix(camera) *
+        lookat(camera.mLookAt, camera.mPosition, camera.mUp)
+    );
 
-    aiMatrix4x4 viewMatrix =
-        lookat(camera.mLookAt, camera.mPosition, camera.mUp);
-
-    auto proj_matrix = GetProjectionMatrix(camera);
-
-    for (auto& vertex : vertices) {
-        assert(vertex.size() == 3);
-        for (auto& point : vertex) {
-            point = viewMatrix * point;
-            point = multProject(proj_matrix, point);
-        }
-    }
+    for (auto& [face, shader] : vertices)
+        shader.vertex(face, proj_matrix);
 
     // Draw the scene
     draw::draw(vertices, resulting_image);

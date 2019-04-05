@@ -11,6 +11,7 @@ executable('rasterizer',
            'src/draw.cc',
            'src/ppm.cc',
            'src/color.cc',
+           'src/shader.cc',
            include_directories: inc,
            install : true,
            dependencies: deps)
