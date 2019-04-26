@@ -13,10 +13,10 @@ struct Image {
     Image(size_t w, size_t h)
         : w(w),
           h(h),
-          data_(w * h),
-          zbuffer_(w * h, std::numeric_limits<float>::min()),
           w2(w / 2),
-          h2(h / 2) {
+          h2(h / 2),
+          data_(w * h),
+          zbuffer_(w * h, std::numeric_limits<float>::min()) {
     }
 
     size_t w;

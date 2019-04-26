@@ -59,7 +59,7 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
             auto norm_point_y = norm_boxmin.y + y * box_h_ratio;
             aiVector3D norm_point{norm_point_x, norm_point_y, depth};
             auto color = shader.fragment(norm_point);
-            img.draw({x, y, depth}, color);
+            img.draw({(float)x, (float)y, depth}, color);
         }
 }
 

@@ -32,21 +32,6 @@ void import_scene(const std::string& pFile) {
         throw std::runtime_error(importer.GetErrorString());
 }
 
-std::ostream& operator<<(std::ostream& out, const aiVector3D& vec) {
-    return out << "<Vec3 " << vec.x << ", " << vec.y << ", " << vec.z << ">";
-}
-
-std::ostream& operator<<(std::ostream& out, const aiMatrix4x4& mat) {
-    out << "<Mat4 ";
-    for (int i = 0; i < 4; i++) {
-        if (i)
-            out << "      ";
-        out << mat[i][0] << ", " << mat[i][1] << ", " << mat[i][2] << ", "
-            << mat[i][3] << (i < 3 ? "\n" : ">");
-    }
-    return out;
-}
-
 static void flatten_node(std::vector<std::pair<Face, Shader>>& res,
                          aiMatrix4x4 transform,
                          const struct aiNode* node) {
@@ -162,8 +147,16 @@ int main(int argc, char* argv[]) {
         lookat(camera.mLookAt, camera.mPosition, camera.mUp)
     );
 
+    std::vector<aiLight*> lights{};
+    for (size_t i =0; i<scene->mNumLights; i++)
+      lights.push_back(scene->mLights[i]);
+
+    std::vector<aiMaterial*> materials{};
+    for (size_t i =0; i<scene->mNumMaterials; i++)
+      materials.push_back(scene->mMaterials[i]);
+
     for (auto& [face, shader] : vertices)
-        shader.vertex(face, proj_matrix);
+        shader.vertex(face, proj_matrix, lights, materials);
 
     // Draw the scene
     draw::draw(vertices, resulting_image);
