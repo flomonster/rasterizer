@@ -53,8 +53,10 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
             if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0)
                 continue;
 
-            // TODO: Improve the calculation of z
             auto depth = face[0].z;
+            for (int i=0; i<3; i++)
+              depth += f[i][2]*bc_screen[i];
+
             auto norm_point_x = norm_boxmin.x + x * box_w_ratio;
             auto norm_point_y = norm_boxmin.y + y * box_h_ratio;
             aiVector3D norm_point{norm_point_x, norm_point_y, depth};
