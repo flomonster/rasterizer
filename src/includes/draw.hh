@@ -3,9 +3,9 @@
 #include <assimp/scene.h>  // Output data structure
 
 #include "color.hh"
+#include "face.hh"
 #include "ppm.hh"
 #include "shader.hh"
-#include "face.hh"
 
 namespace draw {
 

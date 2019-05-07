@@ -4,30 +4,26 @@
 #include "shader.hh"
 #include "utils.hh"
 
-bool Shader::face(const Face &, const aiMesh &) {
+bool Shader::face(const Face &, const aiMaterial &mat) {
+    material_ = &mat;
     return true;
 }
 
-void Shader::vertex(Face &face, const aiMatrix4x4 &view_matrix,
-                    const std::vector<aiLight *> &lights,
-                    const std::vector<aiMaterial *> &) {
-    // Handle ambiant lights
-    auto n = (face[2] - face[0]) ^ (face[1] - face[0]);
-    n.Normalize();
-    float intensity = 0;
-    for (const auto &l : lights) {
-        auto dir = (l->mPosition - face[0]);
-        dir.Normalize();
-        intensity += n * dir;
-    }
-    intensity = std::clamp(intensity, 0.f, 1.f);
-    color_ = Color{intensity, intensity, intensity};
-
+void Shader::vertex(Face &face, const aiMatrix4x4 &view_matrix) {
     // Projection
-    for (auto &vertex : face)
+    for (auto &vertex : face.vert)
         vertex = multProject(view_matrix, vertex);
 }
 
-Color Shader::fragment(aiVector3D &) const {
-    return color_;
+Color Shader::fragment(const Face &face, aiVector3D &bc) const {
+    float intensity = 0;
+    for (int i = 0; i < 3; ++i)
+        for (const auto &l : lights) {
+            auto dir = (l->mPosition - face.vert[i]);
+            dir.Normalize();
+            intensity += face.norm[i] * dir * bc[i];
+        }
+    intensity = std::clamp(intensity / 3, 0.f, 1.f);
+
+    return Color{intensity, intensity, intensity};
 }

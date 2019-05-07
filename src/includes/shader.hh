@@ -6,13 +6,13 @@
 #include "color.hh"
 #include "face.hh"
 
+extern std::vector<aiLight *> lights;
+
 struct Shader {
-    bool face(const Face &face, const aiMesh &mesh);
-    void vertex(Face &face, const aiMatrix4x4 &view_matrix,
-                const std::vector<aiLight *> &lights,
-                const std::vector<aiMaterial *> &materials);
-    Color fragment(aiVector3D &point) const;
+    bool face(const Face &face, const aiMaterial &);
+    void vertex(Face &face, const aiMatrix4x4 &view_matrix);
+    Color fragment(const Face &face, aiVector3D &point) const;
 
    private:
-    Color color_{};
+    const aiMaterial *material_;
 };

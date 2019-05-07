@@ -4,7 +4,7 @@
 
 namespace draw {
 
-aiVector3D barycentric(const Face& face, float x, float y) {
+aiVector3D barycentric(const Face::triplet& face, float x, float y) {
     aiVector3D u{aiVector3D{face[2][0] - face[0][0], face[1][0] - face[0][0],
                             face[0][0] - x} ^
                  aiVector3D{face[2][1] - face[0][1], face[1][1] - face[0][1],
@@ -15,7 +15,7 @@ aiVector3D barycentric(const Face& face, float x, float y) {
 }
 
 void triangle(const Face& f, Image& img, const Shader& shader) {
-    auto face = f;
+    auto face = f.vert;
     for (auto& v : face) {
         v.x = (v.x + 1) * img.w2;
         v.y = (v.y + 1) * img.h2;
@@ -55,12 +55,12 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
 
             auto depth = face[0].z;
             for (int i=0; i<3; i++)
-              depth += f[i][2]*bc_screen[i];
+              depth += face[i][2]*bc_screen[i];
 
             auto norm_point_x = norm_boxmin.x + x * box_w_ratio;
             auto norm_point_y = norm_boxmin.y + y * box_h_ratio;
             aiVector3D norm_point{norm_point_x, norm_point_y, depth};
-            auto color = shader.fragment(norm_point);
+            auto color = shader.fragment(f, bc_screen);
             img.draw({(float)x, (float)y, depth}, color);
         }
 }

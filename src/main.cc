@@ -16,6 +16,7 @@
 
 Assimp::Importer importer;
 const aiScene* scene;
+std::vector<aiLight*> lights;
 
 std::unordered_map<std::string, aiMatrix4x4> object_transforms;
 
@@ -32,11 +33,18 @@ void import_scene(const std::string& pFile) {
         throw std::runtime_error(importer.GetErrorString());
 }
 
+static aiMatrix4x4 extract_rotation(aiMatrix4x4 mat)
+{
+  for (int i = 0; i < 3; ++i)
+    mat[i][3] = 0;
+  return mat;
+}
+
 static void flatten_node(std::vector<std::pair<Face, Shader>>& res,
                          aiMatrix4x4 transform,
                          const struct aiNode* node) {
     transform *= node->mTransformation;
-
+    auto rotation_transform = extract_rotation(transform);
     auto object_name = std::string{node->mName.data, node->mName.length};
     object_transforms.emplace(std::move(object_name), transform);
 
@@ -47,13 +55,18 @@ static void flatten_node(std::vector<std::pair<Face, Shader>>& res,
             auto num_vertices = mesh->mFaces[j].mNumIndices;
             assert(num_vertices == 3);
             for (unsigned int k = 0; k < num_vertices; k++) {
+                // Handle vertice
                 auto vertice = mesh->mVertices[mesh->mFaces[j].mIndices[k]];
                 vertice *= transform;
-                face[k] = vertice;
+                face.vert[k] = vertice;
+                // Handle normals
+                auto normal = mesh->mNormals[mesh->mFaces[j].mIndices[k]];
+                normal *= rotation_transform;
+                face.norm[k] = normal;
             }
 
             Shader face_shader;
-            if (!face_shader.face(face, *mesh))
+            if (!face_shader.face(face, *scene->mMaterials[mesh->mMaterialIndex]))
                 continue;
             res.emplace_back(face, face_shader);
         }
@@ -147,16 +160,11 @@ int main(int argc, char* argv[]) {
         lookat(camera.mLookAt, camera.mPosition, camera.mUp)
     );
 
-    std::vector<aiLight*> lights{};
     for (size_t i =0; i<scene->mNumLights; i++)
       lights.push_back(scene->mLights[i]);
 
-    std::vector<aiMaterial*> materials{};
-    for (size_t i =0; i<scene->mNumMaterials; i++)
-      materials.push_back(scene->mMaterials[i]);
-
     for (auto& [face, shader] : vertices)
-        shader.vertex(face, proj_matrix, lights, materials);
+        shader.vertex(face, proj_matrix);
 
     // Draw the scene
     draw::draw(vertices, resulting_image);

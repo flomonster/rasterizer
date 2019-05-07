@@ -21,4 +21,3 @@ Color Color::operator+(const Color& o) const {
     return Color{flt_normalize(r + o.r), flt_normalize(g + o.g),
                  flt_normalize(b + o.b)};
 }
-
