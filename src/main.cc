@@ -62,6 +62,7 @@ static void flatten_node(std::vector<std::pair<Face, Shader>>& res,
                 // Handle normals
                 auto normal = mesh->mNormals[mesh->mFaces[j].mIndices[k]];
                 normal *= rotation_transform;
+                normal.Normalize();
                 face.norm[k] = normal;
             }
 

@@ -21,9 +21,10 @@ Color Shader::fragment(const Face &face, aiVector3D &bc) const {
         for (const auto &l : lights) {
             auto dir = (l->mPosition - face.vert[i]);
             dir.Normalize();
-            intensity += face.norm[i] * dir * bc[i];
+            float angle_coeff = face.norm[i] * dir;
+            intensity += angle_coeff * bc[i];
         }
-    intensity = std::clamp(intensity / 3, 0.f, 1.f);
+    intensity = std::clamp(intensity, 0.f, 1.f);
 
     return Color{intensity, intensity, intensity};
 }
