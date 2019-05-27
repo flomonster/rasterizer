@@ -6,7 +6,7 @@
 #include "color.hh"
 #include "face.hh"
 
-extern std::vector<aiLight *> lights;
+extern std::vector<aiLight> lights;
 
 struct Shader {
     bool face(const Face &face, const aiMaterial &);

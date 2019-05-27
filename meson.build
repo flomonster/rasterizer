@@ -9,6 +9,7 @@ inc = include_directories('src/includes')
 executable('rasterizer',
            'src/main.cc',
            'src/draw.cc',
+           'src/utils.cc',
            'src/ppm.cc',
            'src/color.cc',
            'src/shader.cc',

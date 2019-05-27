@@ -19,7 +19,7 @@ Color Shader::fragment(const Face &face, aiVector3D &bc) const {
     float intensity = 0;
     for (int i = 0; i < 3; ++i)
         for (const auto &l : lights) {
-            auto dir = (l->mPosition - face.vert[i]);
+            auto dir = (l.mPosition - face.vert[i]);
             dir.Normalize();
             float angle_coeff = face.norm[i] * dir;
             intensity += angle_coeff * bc[i];

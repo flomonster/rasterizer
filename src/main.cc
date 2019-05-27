@@ -11,12 +11,13 @@
 #include <assimp/Importer.hpp>   // C++ importer interface
 
 #include "shader.hh"
+#include "utils.hh"
 #include "draw.hh"
 #include "ppm.hh"
 
 Assimp::Importer importer;
 const aiScene* scene;
-std::vector<aiLight*> lights;
+std::vector<aiLight> lights;
 
 std::unordered_map<std::string, aiMatrix4x4> object_transforms;
 
@@ -161,8 +162,14 @@ int main(int argc, char* argv[]) {
         lookat(camera.mLookAt, camera.mPosition, camera.mUp)
     );
 
-    for (size_t i =0; i<scene->mNumLights; i++)
-      lights.push_back(scene->mLights[i]);
+    for (size_t i =0; i < scene->mNumLights; i++)
+    {
+      auto light = *scene->mLights[i];
+      auto light_name = std::string{light.mName.data, light.mName.length};
+      light.mPosition *= object_transforms[light_name];
+      // TODO: Should handle rotation like camera
+      lights.push_back(light);
+    }
 
     for (auto& [face, shader] : vertices)
         shader.vertex(face, proj_matrix);
