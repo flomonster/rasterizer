@@ -12,6 +12,7 @@
 
 #include "shader.hh"
 #include "utils.hh"
+#include "opt-parser.hh"
 #include "draw.hh"
 #include "ppm.hh"
 
@@ -131,14 +132,10 @@ aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " INPUT_SCENE OUTPUT_PPM"
-                  << std::endl;
-        return 1;
-    }
+    const utils::Options options{argc, argv};
 
-    const std::string input_scene{argv[1]};
-    const char* output_path = argv[2];
+    const std::string input_scene{options.input};
+    const char* output_path = options.output.c_str();
 
     import_scene(input_scene);
 
