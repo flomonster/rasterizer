@@ -19,7 +19,6 @@
 Assimp::Importer importer;
 const aiScene* scene;
 std::vector<aiLight> lights;
-extern utils::Options options;
 
 std::unordered_map<std::string, aiMatrix4x4> object_transforms;
 
@@ -133,10 +132,10 @@ aiMatrix4x4 lookat(const aiVector3D& lookat, const aiVector3D& center,
 }
 
 int main(int argc, char* argv[]) {
-    options.parse(argc, argv);
+    utils::options.parse(argc, argv);
 
-    const std::string input_scene{options.input};
-    const char* output_path = options.output.c_str();
+    const std::string input_scene{utils::options.input};
+    const char* output_path = utils::options.output.c_str();
 
     import_scene(input_scene);
 

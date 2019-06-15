@@ -15,4 +15,5 @@ struct Shader {
 
    private:
     const aiMaterial *material_;
+    float intensity_ = 0;
 };

@@ -15,4 +15,7 @@ struct Options {
     /*! \brief Will generate the image of a given type*/
     std::string type;
 };
+
+extern Options options;
+
 }  // namespace utils

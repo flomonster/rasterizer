@@ -7,6 +7,8 @@ namespace opt = boost::program_options;
 
 namespace utils {
 
+Options options{};
+
 void Options::parse(int argc, char* argv[]) {
     opt::options_description desc("Allowed options");
     desc.add_options()("help,h", "show usage")(

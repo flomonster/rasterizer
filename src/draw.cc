@@ -3,8 +3,6 @@
 #include "draw.hh"
 #include "opt-parser.hh"
 
-utils::Options options;
-
 namespace draw {
 
 /**
@@ -100,7 +98,7 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
             auto norm_point_y = norm_boxmin.y + y * box_h_ratio;
             aiVector3D norm_point{norm_point_x, norm_point_y, depth};
             Color color{1.f,1.f,1.f} ;
-            if (options.type != "flat")
+            if (utils::options.type != "flat")
               color = shader.fragment(f, bc_screen);
             img.draw({(float)x, (float)y, depth}, color);
         }
@@ -108,7 +106,7 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
 
 void draw(const std::vector<std::pair<Face, Shader>>& faces, Image& img) {
     for (const auto& [face, shader] : faces) {
-        if (options.type == "line") {
+        if (utils::options.type == "line") {
             line(face.vert[0], face.vert[1], img);
             line(face.vert[1], face.vert[2], img);
             line(face.vert[2], face.vert[0], img);
