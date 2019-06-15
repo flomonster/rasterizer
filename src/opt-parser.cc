@@ -13,7 +13,7 @@ void Options::parse(int argc, char* argv[]) {
         "input,in", opt::value<std::string>(&input), "path to the input file")(
         "output,out", opt::value<std::string>(&output),
         "path to output (ppm) file")("type,t", opt::value<std::string>(&type),
-                                     "line|flat|lambert|phong");
+                                     "line | flat | lambert | phong (default)");
 
     opt::variables_map vm;
     try {
