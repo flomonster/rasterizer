@@ -11,7 +11,8 @@ Options::Options(int argc, char* argv[]) {
     desc.add_options()("help,h", "show usage")(
         "input,in", opt::value<std::string>(&input), "path to the input file")(
         "output,out", opt::value<std::string>(&output),
-        "path to output (ppm) file");
+        "path to output (ppm) file")("type,t", opt::value<std::string>(&type),
+                                     "line|flat|phong");
 
     opt::variables_map vm;
     try {
@@ -32,6 +33,15 @@ Options::Options(int argc, char* argv[]) {
     if (!vm.count("input") || !vm.count("output")) {
         std::cerr << "Need an input and output file\n";
         std::exit(1);
+    }
+    if (vm.count("type")) {
+        if (type == "line") {
+        } else if (type == "falt") {
+        } else if (type == "phong") {
+        } else {
+            std::cerr << "\"" << type << "\" isn't a valid type.\n";
+            std::exit(1);
+        }
     }
 }
 }  // namespace utils

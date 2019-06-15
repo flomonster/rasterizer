@@ -8,9 +8,11 @@ struct Options {
     /*! \brief Constructor given program argc and argv */
     Options(int argc, char* argv[]);
 
-    /*! \brief In case of --pgn the given path to pgn */
+    /*! \brief The given path to the scene */
     std::string input;
-    /*! \brief In case of --perft the given path to perft */
+    /*! \brief The output image path */
     std::string output;
+    /*! \brief Will generate the image of a given type*/
+    std::string type;
 };
 }  // namespace utils
