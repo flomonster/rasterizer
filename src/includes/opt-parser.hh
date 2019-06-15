@@ -6,7 +6,7 @@
 namespace utils {
 struct Options {
     /*! \brief Constructor given program argc and argv */
-    Options(int argc, char* argv[]);
+    void parse(int argc, char* argv[]);
 
     /*! \brief The given path to the scene */
     std::string input;

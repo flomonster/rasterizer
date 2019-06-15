@@ -1,8 +1,47 @@
 #include <algorithm>
 
 #include "draw.hh"
+#include "opt-parser.hh"
+
+utils::Options options;
 
 namespace draw {
+
+/**
+ * Draw a line with a specific color
+ */
+void line(const aiVector3D& a, const aiVector3D& b, Image& img) {
+    static const Color col{1.f, 1.f, 1.f};
+    bool steep = false;
+    auto p_min = aiVector3D{a.x * img.w2, -a.y * img.h2, 0};
+    auto p_max = aiVector3D{b.x * img.w2, -b.y * img.h2, 0};
+    if (std::abs(a.x - b.x) < std::abs(a.y - b.y)) {
+        std::swap(p_min.x, p_min.y);
+        std::swap(p_max.x, p_max.y);
+        steep = true;
+    }
+    if (p_min.x > p_max.x) {
+        std::swap(p_min.x, p_max.x);
+        std::swap(p_min.y, p_max.y);
+    }
+    float derror = std::abs((p_max.y - p_min.y) / (p_max.x - p_min.x));
+    float error = 0;
+    int align_y = steep ? img.w2 : img.h2;
+    int align_x = steep ? img.h2 : img.w2;
+    int y = p_min.y + align_y;
+    for (int x = p_min.x + align_x; x <= p_max.x + align_x; x++) {
+        if (steep)
+            img[x][y] = col;
+        else
+            img[y][x] = col;
+
+        error += derror;
+        if (error > .5) {
+            y += (p_max.y > p_min.y ? 1 : -1);
+            error -= 1.;
+        }
+    }
+}
 
 aiVector3D barycentric(const Face::triplet& face, float x, float y) {
     aiVector3D u{aiVector3D{face[2][0] - face[0][0], face[1][0] - face[0][0],
@@ -60,14 +99,22 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
             auto norm_point_x = norm_boxmin.x + x * box_w_ratio;
             auto norm_point_y = norm_boxmin.y + y * box_h_ratio;
             aiVector3D norm_point{norm_point_x, norm_point_y, depth};
-            auto color = shader.fragment(f, bc_screen);
+            Color color{1.f,1.f,1.f} ;
+            if (options.type != "flat")
+              color = shader.fragment(f, bc_screen);
             img.draw({(float)x, (float)y, depth}, color);
         }
 }
 
 void draw(const std::vector<std::pair<Face, Shader>>& faces, Image& img) {
-    for (const auto& [face, shader] : faces)
-        triangle(face, img, shader);
+    for (const auto& [face, shader] : faces) {
+        if (options.type == "line") {
+            line(face.vert[0], face.vert[1], img);
+            line(face.vert[1], face.vert[2], img);
+            line(face.vert[2], face.vert[0], img);
+        } else
+            triangle(face, img, shader);
+    }
 }
 
 }  // namespace draw

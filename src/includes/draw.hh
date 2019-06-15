@@ -9,8 +9,7 @@
 
 namespace draw {
 
-void line(const aiVector3D& a, const aiVector3D& b, Image& img,
-          const Color& col);
+void line(const aiVector3D& a, const aiVector3D& b, Image& img);
 
 void draw(const std::vector<std::pair<Face, Shader>>& vertices, Image& img);
 void triangle(const Face& face, Image& img, const Color& col);

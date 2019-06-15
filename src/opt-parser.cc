@@ -6,13 +6,14 @@
 namespace opt = boost::program_options;
 
 namespace utils {
-Options::Options(int argc, char* argv[]) {
+
+void Options::parse(int argc, char* argv[]) {
     opt::options_description desc("Allowed options");
     desc.add_options()("help,h", "show usage")(
         "input,in", opt::value<std::string>(&input), "path to the input file")(
         "output,out", opt::value<std::string>(&output),
         "path to output (ppm) file")("type,t", opt::value<std::string>(&type),
-                                     "line|flat|phong");
+                                     "line|flat|lambert|phong");
 
     opt::variables_map vm;
     try {
@@ -35,13 +36,12 @@ Options::Options(int argc, char* argv[]) {
         std::exit(1);
     }
     if (vm.count("type")) {
-        if (type == "line") {
-        } else if (type == "falt") {
-        } else if (type == "phong") {
-        } else {
+        if (type != "lambert" && type != "line" && type != "falt" &&
+            type != "phong") {
             std::cerr << "\"" << type << "\" isn't a valid type.\n";
             std::exit(1);
         }
-    }
+    } else
+        type = "phong";
 }
 }  // namespace utils
