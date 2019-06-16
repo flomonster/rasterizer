@@ -71,16 +71,8 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
     aiVector3D norm_boxmin{boxmin.x / img.w - 1, boxmin.y / img.h - 1, 0};
     aiVector3D norm_boxmax{boxmax.x / img.w - 1, boxmax.y / img.h - 1, 0};
 
-    float box_width = boxmax.x - boxmin.x;
-    float box_height = boxmax.y - boxmin.y;
-
-    float norm_box_width = norm_boxmax.x - norm_boxmin.x;
-    float norm_box_height = norm_boxmax.y - norm_boxmin.y;
-
     // multiplying by these floats translates an x or y of the bounding
     // box to normalized dimensions
-    float box_w_ratio = norm_box_width / box_width;
-    float box_h_ratio = norm_box_height / box_height;
 
     float intensity = std::rand() / (float) RAND_MAX;
     for (int x = boxmin.x; x < boxmax.x; x++)
@@ -95,9 +87,6 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
             for (int i=0; i<3; i++)
               depth += face[i][2]*bc_screen[i];
 
-            auto norm_point_x = norm_boxmin.x + x * box_w_ratio;
-            auto norm_point_y = norm_boxmin.y + y * box_h_ratio;
-            aiVector3D norm_point{norm_point_x, norm_point_y, depth};
             Color color{intensity, intensity, intensity} ;
             if (utils::options.type != "flat")
               color = shader.fragment(f, bc_screen);
