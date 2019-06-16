@@ -14,8 +14,9 @@ void Shader::vertex(Face &face, const aiMatrix4x4 &view_matrix) {
     // Lambert shading
     if (utils::options.type == "lambert") {
         auto n = (face.vert[2] - face.vert[0]) ^ (face.vert[1] - face.vert[0]);
+        n.Normalize();
         for (const auto &l : lights) {
-            auto dir = (l.mPosition - face.vert[0]);
+            auto dir = (face.vert[0] - l.mPosition);
             dir.Normalize();
             intensity_ += n * dir;
         }

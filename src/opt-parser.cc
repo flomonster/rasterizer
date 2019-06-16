@@ -38,7 +38,7 @@ void Options::parse(int argc, char* argv[]) {
         std::exit(1);
     }
     if (vm.count("type")) {
-        if (type != "lambert" && type != "line" && type != "falt" &&
+        if (type != "lambert" && type != "line" && type != "flat" &&
             type != "phong") {
             std::cerr << "\"" << type << "\" isn't a valid type.\n";
             std::exit(1);

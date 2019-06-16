@@ -82,6 +82,7 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
     float box_w_ratio = norm_box_width / box_width;
     float box_h_ratio = norm_box_height / box_height;
 
+    float intensity = std::rand() / (float) RAND_MAX;
     for (int x = boxmin.x; x < boxmax.x; x++)
         for (int y = boxmin.y; y < boxmax.y; y++) {
             auto bc_screen = barycentric(face, x, y);
@@ -97,7 +98,7 @@ void triangle(const Face& f, Image& img, const Shader& shader) {
             auto norm_point_x = norm_boxmin.x + x * box_w_ratio;
             auto norm_point_y = norm_boxmin.y + y * box_h_ratio;
             aiVector3D norm_point{norm_point_x, norm_point_y, depth};
-            Color color{1.f,1.f,1.f} ;
+            Color color{intensity, intensity, intensity} ;
             if (utils::options.type != "flat")
               color = shader.fragment(f, bc_screen);
             img.draw({(float)x, (float)y, depth}, color);
